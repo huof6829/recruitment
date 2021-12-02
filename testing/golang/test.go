@@ -34,27 +34,11 @@ func printHelp() {
 func CountCommentLines(dir string) error {
 	// TODO: start your work here
 
-	// specific file kind by os.Args when print cmmand in console, eg: go run . testing go
-	kind := "cpp"
-
 	// find all require files
-	paths := make([]string, 0, 200)
+	paths := make([]string, 0, 1024)
 	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
-
-			switch kind {
-			case "cpp":
-				if strings.HasSuffix(info.Name(), ".cpp") ||
-					strings.HasSuffix(info.Name(), ".hpp") ||
-					strings.HasSuffix(info.Name(), ".c") ||
-					strings.HasSuffix(info.Name(), ".h") {
-					paths = append(paths, path)
-				}
-			case "go":
-				if strings.HasSuffix(info.Name(), ".go") {
-					paths = append(paths, path)
-				}
-			}
+			paths = append(paths, path)
 		}
 		return nil
 	}); err != nil {
@@ -64,16 +48,16 @@ func CountCommentLines(dir string) error {
 		directory:	%s`, dir))
 	}
 
-	// scanning files
 	chstr := make(chan string, 10)
 	strs := make([]string, 0, 10)
 	var wg sync.WaitGroup
+	// scanning files
 ExitFor:
 	for i := 0; i < len(paths); i++ {
 		wg.Add(1)
 		go func(path string) {
 			defer wg.Done()
-			numLines, numCommentLine, numCommentBlock := ScanFile(path, kind)
+			numLines, numCommentLine, numCommentBlock := ScanFile(path)
 			chstr <- fmt.Sprintf("%-50s    total:%5d    inline:%5d    block:%5d\n", path, numLines, numCommentLine, numCommentBlock)
 		}(paths[i])
 
@@ -100,13 +84,18 @@ ExitFor:
 }
 
 /* Open a file and read a line by ascending order. Print the counting numbers in the console. */
-func ScanFile(path string, kind string) (numLines int, numCommentLine int, numCommentBlock int) {
-
+func ScanFile(path string) (numLines int, numCommentLine int, numCommentBlock int) {
+	// specific file kind by os.Args when print cmmand in console, eg: go run . testing python
 	var eFile countcomment.CountCommentIF
+	if strings.HasSuffix(path, ".cpp") ||
+		strings.HasSuffix(path, ".hpp") ||
+		strings.HasSuffix(path, ".c") ||
+		strings.HasSuffix(path, ".h") {
 
-	if kind == "cpp" {
 		eFile = countcomment.NewCpp()
-	} else if kind == "go" {
+		// }else if  strings.HasSuffix(path, os.Args[2]){
+		// eFile = countcomment.NewPython()
+	} else if strings.HasSuffix(path, ".go") {
 		eFile = countcomment.NewGolang()
 	} else {
 		return
